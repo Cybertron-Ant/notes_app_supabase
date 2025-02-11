@@ -6,6 +6,8 @@ import {
   DialogTitle,
   DialogFooter,
 } from "./ui/dialog";
+import MarkdownEditor from "@uiw/react-markdown-editor";
+import MarkdownPreview from "@uiw/react-markdown-preview";
 import { Button } from "./ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs";
 import { Textarea } from "./ui/textarea";
@@ -126,28 +128,41 @@ const NoteEditor = ({
             </Button>
           </div>
 
-          <Tabs defaultValue="write" className="flex-1">
-            <TabsList>
-              <TabsTrigger value="write">Write</TabsTrigger>
-              <TabsTrigger value="preview">Preview</TabsTrigger>
-            </TabsList>
-            <TabsContent value="write" className="flex-1 mt-2">
-              <Textarea
-                placeholder="Write your note content here..."
+          <div className="flex-1 relative">
+            <div
+              className={`w-full h-full transition-opacity ${isPreview ? "hidden" : "block"}`}
+            >
+              <MarkdownEditor
                 value={content}
-                onChange={(e) => setContent(e.target.value)}
-                className="min-h-[300px] flex-1"
+                onChange={(value) => setContent(value)}
+                toolbars={[
+                  "bold",
+                  "italic",
+                  "strikethrough",
+                  "heading-1",
+                  "heading-2",
+                  "heading-3",
+                  "unordered-list",
+                  "ordered-list",
+                  "quote",
+                  "code",
+                  "link",
+                  "image",
+                ]}
+                className="min-h-[300px] flex-1 border rounded-md"
               />
-            </TabsContent>
-            <TabsContent value="preview" className="flex-1 mt-2">
+            </div>
+            <div
+              className={`w-full h-full transition-opacity ${isPreview ? "block" : "hidden"}`}
+            >
               <ScrollArea className="h-[300px] w-full rounded-md border p-4">
-                <div className="prose dark:prose-invert">
-                  {/* This would be replaced with a markdown renderer */}
-                  {content}
-                </div>
+                <MarkdownPreview
+                  source={content}
+                  className="prose dark:prose-invert"
+                />
               </ScrollArea>
-            </TabsContent>
-          </Tabs>
+            </div>
+          </div>
 
           <div className="space-y-2">
             <div className="flex gap-2">

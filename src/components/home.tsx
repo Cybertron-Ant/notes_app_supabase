@@ -21,11 +21,27 @@ interface Note {
 const Home = () => {
   const [isListView, setIsListView] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [selectedTag, setSelectedTag] = useState("");
+  const [availableTags, setAvailableTags] = useState<
+    Array<{ id: string; name: string; color?: string }>
+  >([]);
   const [isEditorOpen, setIsEditorOpen] = useState(false);
   const [notes, setNotes] = useState<Note[]>([]);
   const [loading, setLoading] = useState(true);
 
+  const fetchTags = async () => {
+    try {
+      const { data: tags, error } = await supabase.from("tags").select("*");
+
+      if (error) throw error;
+      setAvailableTags(tags);
+    } catch (error) {
+      console.error("Error fetching tags:", error);
+    }
+  };
+
   useEffect(() => {
+    fetchTags();
     const fetchNotes = async () => {
       try {
         const { data: notesData, error } = await supabase.from("notes").select(`
@@ -132,14 +148,19 @@ const Home = () => {
     }
   };
 
-  const filteredNotes = notes.filter(
-    (note) =>
+  const filteredNotes = notes.filter((note) => {
+    const matchesSearch =
       note.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
       note.content.toLowerCase().includes(searchQuery.toLowerCase()) ||
       note.tags.some((tag) =>
         tag.name.toLowerCase().includes(searchQuery.toLowerCase()),
-      ),
-  );
+      );
+
+    const matchesTag =
+      !selectedTag || note.tags.some((tag) => tag.id === selectedTag);
+
+    return matchesSearch && matchesTag;
+  });
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
@@ -147,6 +168,9 @@ const Home = () => {
         onViewToggle={handleViewToggle}
         onSearch={handleSearch}
         currentView={isListView ? "list" : "grid"}
+        onTagFilter={setSelectedTag}
+        selectedTag={selectedTag}
+        availableTags={availableTags}
       />
 
       <main className="pt-16 pb-6 px-2 sm:px-4">

@@ -8,12 +8,18 @@ interface HeaderProps {
   onViewToggle?: (view: "grid" | "list") => void;
   onSearch?: (query: string) => void;
   currentView?: "grid" | "list";
+  onTagFilter?: (tag: string) => void;
+  selectedTag?: string;
+  availableTags?: Array<{ id: string; name: string; color?: string }>;
 }
 
 const Header = ({
   onViewToggle = () => {},
   onSearch = () => {},
   currentView = "grid",
+  onTagFilter = () => {},
+  selectedTag,
+  availableTags = [],
 }: HeaderProps) => {
   const [searchQuery, setSearchQuery] = useState("");
   const { theme, setTheme } = useTheme();
@@ -42,6 +48,28 @@ const Header = ({
               className="pl-10 w-full"
             />
           </div>
+        </div>
+
+        <div className="flex items-center gap-2 overflow-x-auto pb-2 sm:pb-0 max-w-full">
+          <Button
+            variant={!selectedTag ? "default" : "outline"}
+            size="sm"
+            onClick={() => onTagFilter("")}
+            className="whitespace-nowrap"
+          >
+            All Notes
+          </Button>
+          {availableTags.map((tag) => (
+            <Button
+              key={tag.id}
+              variant={selectedTag === tag.id ? "default" : "outline"}
+              size="sm"
+              onClick={() => onTagFilter(tag.id)}
+              className={`whitespace-nowrap ${tag.color || ""}`}
+            >
+              {tag.name}
+            </Button>
+          ))}
         </div>
 
         <div className="flex items-center gap-2">
