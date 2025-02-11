@@ -1,4 +1,5 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
+import { supabase } from "../lib/supabase";
 import Header from "./Header";
 import NotesGrid from "./NotesGrid";
 import NoteEditor from "./NoteEditor";
@@ -21,26 +22,62 @@ const Home = () => {
   const [isListView, setIsListView] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [isEditorOpen, setIsEditorOpen] = useState(false);
-  const [notes, setNotes] = useState<Note[]>([
-    {
-      id: "1",
-      title: "Welcome Note",
-      content:
-        "Welcome to your notes app! Start creating notes to get organized.",
-      tags: [{ id: "1", name: "welcome", color: "bg-blue-100 text-blue-800" }],
-      lastModified: new Date(),
-    },
-    {
-      id: "2",
-      title: "Getting Started",
-      content:
-        "Here are some tips to help you get started with the notes app...",
-      tags: [
-        { id: "2", name: "tutorial", color: "bg-green-100 text-green-800" },
-      ],
-      lastModified: new Date(),
-    },
-  ]);
+  const [notes, setNotes] = useState<Note[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchNotes = async () => {
+      try {
+        const { data: notesData, error } = await supabase.from("notes").select(`
+            *,
+            notes_tags!inner(tag_id),
+            tags!inner(*)
+          `);
+
+        if (error) throw error;
+
+        setNotes(
+          notesData.map((note: any) => ({
+            id: note.id,
+            title: note.title,
+            content: note.content,
+            tags: note.tags,
+            lastModified: new Date(note.updated_at),
+          })),
+        );
+      } catch (error) {
+        console.error("Error fetching notes:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchNotes();
+
+    // Subscribe to realtime changes for all relevant tables
+    const channel = supabase
+      .channel("db-changes")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "notes" },
+        () => fetchNotes(),
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "notes_tags" },
+        () => fetchNotes(),
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "tags" },
+        () => fetchNotes(),
+      )
+      .subscribe();
+
+    return () => {
+      channel.unsubscribe();
+    };
+  }, []);
 
   const handleViewToggle = (view: "grid" | "list") => {
     setIsListView(view === "list");
@@ -55,13 +92,44 @@ const Home = () => {
     setIsEditorOpen(true);
   };
 
-  const handleNoteSave = (note: {
+  const handleNoteSave = async (note: {
     title: string;
     content: string;
     tags: Array<{ id: string; name: string; color?: string }>;
   }) => {
-    // Implement save functionality
-    setIsEditorOpen(false);
+    try {
+      const user = await supabase.auth.getUser();
+      if (!user.data.user) {
+        throw new Error("User not authenticated");
+      }
+
+      const { data: newNote, error } = await supabase
+        .from("notes")
+        .insert({
+          title: note.title,
+          content: note.content,
+          user_id: user.data.user.id,
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      if (note.tags.length > 0) {
+        const { error: tagError } = await supabase.from("notes_tags").insert(
+          note.tags.map((tag) => ({
+            note_id: newNote.id,
+            tag_id: tag.id,
+          })),
+        );
+
+        if (tagError) throw tagError;
+      }
+
+      setIsEditorOpen(false);
+    } catch (error) {
+      console.error("Error saving note:", error);
+    }
   };
 
   const filteredNotes = notes.filter(
@@ -86,6 +154,7 @@ const Home = () => {
           <NotesGrid
             notes={filteredNotes}
             isListView={isListView}
+            loading={loading}
             onViewToggle={() => setIsListView(!isListView)}
             onNoteEdit={handleNoteEdit}
           />

@@ -18,40 +18,17 @@ interface Note {
 interface NotesGridProps {
   notes?: Note[];
   isListView?: boolean;
+  loading?: boolean;
   onViewToggle?: () => void;
   onNoteEdit?: (id: string) => void;
   onNoteDelete?: (id: string) => void;
 }
 
+import { Loader2 } from "lucide-react";
+
 const NotesGrid = ({
-  notes = [
-    {
-      id: "1",
-      title: "Welcome Note",
-      content:
-        "Welcome to your notes app! Start creating notes to get organized.",
-      tags: [{ id: "1", name: "welcome", color: "bg-blue-100 text-blue-800" }],
-      lastModified: new Date(),
-    },
-    {
-      id: "2",
-      title: "Getting Started",
-      content:
-        "Here are some tips to help you get started with the notes app...",
-      tags: [
-        { id: "2", name: "tutorial", color: "bg-green-100 text-green-800" },
-      ],
-      lastModified: new Date(),
-    },
-    {
-      id: "3",
-      title: "Features Overview",
-      content:
-        "Discover all the features available in this notes application...",
-      tags: [{ id: "3", name: "info", color: "bg-purple-100 text-purple-800" }],
-      lastModified: new Date(),
-    },
-  ],
+  notes = [],
+  loading = false,
   isListView = false,
   onViewToggle = () => {},
   onNoteEdit = () => {},
@@ -100,12 +77,17 @@ const NotesGrid = ({
           ))}
         </div>
 
-        {notes.length === 0 && (
+        {loading ? (
+          <div className="flex flex-col items-center justify-center h-[400px] text-gray-500 dark:text-gray-400">
+            <Loader2 className="h-8 w-8 animate-spin" />
+            <p className="text-sm mt-2">Loading notes...</p>
+          </div>
+        ) : notes.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-[400px] text-gray-500 dark:text-gray-400">
             <p className="text-xl">No notes found</p>
             <p className="text-sm mt-2">Create a new note to get started</p>
           </div>
-        )}
+        ) : null}
       </div>
     </div>
   );
