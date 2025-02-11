@@ -47,7 +47,7 @@ const NoteCard = ({
   onDelete = () => {},
 }: NoteCardProps) => {
   return (
-    <Card className="w-[340px] h-[280px] bg-white dark:bg-gray-800 hover:shadow-lg transition-shadow duration-200">
+    <Card className="w-full max-w-[340px] mx-auto h-[280px] bg-white dark:bg-gray-800 hover:shadow-lg transition-shadow duration-200">
       <CardHeader className="pb-2">
         <div className="flex justify-between items-start">
           <CardTitle className="text-lg font-semibold truncate">

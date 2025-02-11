@@ -29,9 +29,9 @@ const Header = ({
   };
 
   return (
-    <header className="w-full h-16 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-4 fixed top-0 z-10">
-      <div className="max-w-7xl mx-auto h-full flex items-center justify-between gap-4">
-        <div className="flex-1 max-w-xl">
+    <header className="w-full h-16 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-2 sm:px-4 fixed top-0 z-10">
+      <div className="max-w-7xl mx-auto h-full flex flex-col sm:flex-row items-center justify-between gap-2 sm:gap-4">
+        <div className="w-full sm:flex-1 sm:max-w-xl">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
             <Input

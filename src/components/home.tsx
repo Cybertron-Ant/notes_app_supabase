@@ -149,7 +149,7 @@ const Home = () => {
         currentView={isListView ? "list" : "grid"}
       />
 
-      <main className="pt-16 pb-6 px-4">
+      <main className="pt-16 pb-6 px-2 sm:px-4">
         <div className="max-w-7xl mx-auto relative">
           <NotesGrid
             notes={filteredNotes}
@@ -160,7 +160,7 @@ const Home = () => {
           />
 
           <Button
-            className="fixed bottom-6 right-6 h-14 w-14 rounded-full shadow-lg"
+            className="fixed bottom-4 right-4 sm:bottom-6 sm:right-6 h-12 w-12 sm:h-14 sm:w-14 rounded-full shadow-lg"
             onClick={() => setIsEditorOpen(true)}
           >
             <Plus className="h-6 w-6" />

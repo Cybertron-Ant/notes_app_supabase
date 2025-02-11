@@ -84,7 +84,7 @@ const NoteEditor = ({
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="max-w-[800px] w-[90vw] h-[80vh] bg-white dark:bg-gray-800">
+      <DialogContent className="max-w-[800px] w-[95vw] sm:w-[90vw] h-[90vh] sm:h-[80vh] bg-white dark:bg-gray-800">
         <DialogHeader>
           <DialogTitle>
             <Input

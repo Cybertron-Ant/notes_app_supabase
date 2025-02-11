@@ -35,7 +35,7 @@ const NotesGrid = ({
   onNoteDelete = () => {},
 }: NotesGridProps) => {
   return (
-    <div className="w-full h-full bg-gray-50 dark:bg-gray-900 p-6">
+    <div className="w-full h-full bg-gray-50 dark:bg-gray-900 p-3 sm:p-6">
       <div className="max-w-7xl mx-auto">
         <div className="flex justify-end mb-6">
           <Button
@@ -56,8 +56,8 @@ const NotesGrid = ({
           className={`grid gap-6 ${
             isListView
               ? "grid-cols-1"
-              : "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
-          }`}
+              : "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4"
+          } gap-4 sm:gap-6`}
         >
           {notes.map((note) => (
             <div
