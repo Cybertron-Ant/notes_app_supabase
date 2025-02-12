@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { supabase } from "../lib/supabase";
+import { useAuth } from "./auth/AuthProvider";
 import Header from "./Header";
 import NotesGrid from "./NotesGrid";
 import NoteEditor from "./NoteEditor";
@@ -19,6 +20,28 @@ interface Note {
 }
 
 const Home = () => {
+  const { user } = useAuth();
+
+  // Show a message if not logged in
+  if (!user) {
+    return (
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+        <Header />
+        <main className="pt-16 pb-6 px-2 sm:px-4">
+          <div className="max-w-7xl mx-auto flex items-center justify-center h-[calc(100vh-8rem)]">
+            <div className="text-center">
+              <h2 className="text-2xl font-semibold mb-2">
+                Welcome to Notes App
+              </h2>
+              <p className="text-gray-600 dark:text-gray-400 mb-4">
+                Please sign in with GitHub to create and manage your notes
+              </p>
+            </div>
+          </div>
+        </main>
+      </div>
+    );
+  }
   const [isListView, setIsListView] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedTag, setSelectedTag] = useState("");
@@ -46,21 +69,22 @@ const Home = () => {
       try {
         const { data: notesData, error } = await supabase.from("notes").select(`
             *,
-            notes_tags!inner(tag_id),
-            tags!inner(*)
+            notes_tags(tag_id),
+            tags(id, name, color)
           `);
 
         if (error) throw error;
 
-        setNotes(
-          notesData.map((note: any) => ({
+        if (notesData) {
+          const formattedNotes = notesData.map((note: any) => ({
             id: note.id,
             title: note.title,
             content: note.content,
-            tags: note.tags,
-            lastModified: new Date(note.updated_at),
-          })),
-        );
+            tags: note.tags || [],
+            lastModified: new Date(note.updated_at || note.created_at),
+          }));
+          setNotes(formattedNotes);
+        }
       } catch (error) {
         console.error("Error fetching notes:", error);
       } finally {
@@ -103,48 +127,97 @@ const Home = () => {
     setSearchQuery(query);
   };
 
+  const [editingNote, setEditingNote] = useState<Note | null>(null);
+
   const handleNoteEdit = (id: string) => {
-    // Implement edit functionality
-    setIsEditorOpen(true);
+    const note = notes.find((n) => n.id === id);
+    if (note) {
+      setEditingNote(note);
+      setIsEditorOpen(true);
+    }
   };
 
-  const handleNoteSave = async (note: {
+  const handleNoteDelete = async (id: string) => {
+    try {
+      const { error } = await supabase.from("notes").delete().eq("id", id);
+
+      if (error) throw error;
+    } catch (error) {
+      console.error("Error deleting note:", error);
+    }
+  };
+
+  const handleNoteSave = async (noteData: {
     title: string;
     content: string;
     tags: Array<{ id: string; name: string; color?: string }>;
   }) => {
+    console.log("Saving note:", noteData);
     try {
-      const user = await supabase.auth.getUser();
-      if (!user.data.user) {
-        throw new Error("User not authenticated");
+      if (!user) {
+        throw new Error("Please sign in to create or edit notes");
       }
 
-      const { data: newNote, error } = await supabase
-        .from("notes")
-        .insert({
-          title: note.title,
-          content: note.content,
-          user_id: user.data.user.id,
-        })
-        .select()
-        .single();
+      if (editingNote) {
+        // Update existing note
+        const { error: noteError } = await supabase
+          .from("notes")
+          .update({
+            title: noteData.title,
+            content: noteData.content,
+            updated_at: new Date().toISOString(),
+          })
+          .eq("id", editingNote.id);
 
-      if (error) throw error;
+        if (noteError) throw noteError;
 
-      if (note.tags.length > 0) {
-        const { error: tagError } = await supabase.from("notes_tags").insert(
-          note.tags.map((tag) => ({
-            note_id: newNote.id,
-            tag_id: tag.id,
-          })),
-        );
+        // Update tags
+        await supabase
+          .from("notes_tags")
+          .delete()
+          .eq("note_id", editingNote.id);
 
-        if (tagError) throw tagError;
+        if (noteData.tags.length > 0) {
+          const { error: tagError } = await supabase.from("notes_tags").insert(
+            noteData.tags.map((tag) => ({
+              note_id: editingNote.id,
+              tag_id: tag.id,
+            })),
+          );
+
+          if (tagError) throw tagError;
+        }
+      } else {
+        // Create new note
+        const { data: newNote, error: noteError } = await supabase
+          .from("notes")
+          .insert({
+            title: noteData.title,
+            content: noteData.content,
+            user_id: user.id,
+          })
+          .select()
+          .single();
+
+        if (noteError) throw noteError;
+
+        if (noteData.tags.length > 0) {
+          const { error: tagError } = await supabase.from("notes_tags").insert(
+            noteData.tags.map((tag) => ({
+              note_id: newNote.id,
+              tag_id: tag.id,
+            })),
+          );
+
+          if (tagError) throw tagError;
+        }
       }
 
       setIsEditorOpen(false);
+      setEditingNote(null);
     } catch (error) {
       console.error("Error saving note:", error);
+      alert("Error saving note: " + (error as Error).message);
     }
   };
 
@@ -181,6 +254,7 @@ const Home = () => {
             loading={loading}
             onViewToggle={() => setIsListView(!isListView)}
             onNoteEdit={handleNoteEdit}
+            onNoteDelete={handleNoteDelete}
           />
 
           <Button
@@ -192,8 +266,20 @@ const Home = () => {
 
           <NoteEditor
             open={isEditorOpen}
-            onClose={() => setIsEditorOpen(false)}
+            onClose={() => {
+              setIsEditorOpen(false);
+              setEditingNote(null);
+            }}
             onSave={handleNoteSave}
+            initialNote={
+              editingNote
+                ? {
+                    title: editingNote.title,
+                    content: editingNote.content,
+                    tags: editingNote.tags,
+                  }
+                : undefined
+            }
           />
         </div>
       </main>

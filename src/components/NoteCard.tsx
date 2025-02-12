@@ -10,14 +10,15 @@ import {
 } from "./ui/card";
 import { Badge } from "./ui/badge";
 import { format } from "date-fns";
-import { MoreVertical, Edit2 } from "lucide-react";
+import { MoreVertical, Edit2, Trash2 } from "lucide-react";
 import { Button } from "./ui/button";
 import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "./ui/tooltip";
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "./ui/dropdown-menu";
 
 interface Tag {
   id: string;
@@ -54,18 +55,25 @@ const NoteCard = ({
           <CardTitle className="text-lg font-semibold truncate">
             {title}
           </CardTitle>
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button variant="ghost" size="icon" className="h-8 w-8">
-                  <MoreVertical className="h-4 w-4" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>
-                <p>More options</p>
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="icon" className="h-8 w-8">
+                <MoreVertical className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={() => onEdit(id)}>
+                <Edit2 className="h-4 w-4 mr-2" /> Edit
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                onClick={() => onDelete(id)}
+                className="text-red-600 dark:text-red-400"
+              >
+                <Trash2 className="h-4 w-4 mr-2" /> Delete
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
         <CardDescription className="text-sm text-gray-500">
           {format(lastModified, "MMM d, yyyy")}
@@ -88,15 +96,6 @@ const NoteCard = ({
             </Badge>
           ))}
         </div>
-        <Button
-          variant="ghost"
-          size="sm"
-          className="w-full mt-2"
-          onClick={() => onEdit(id)}
-        >
-          <Edit2 className="h-4 w-4 mr-2" />
-          Edit Note
-        </Button>
       </CardFooter>
     </Card>
   );
