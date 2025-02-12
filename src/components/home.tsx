@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { supabase } from "../lib/supabase";
 import { useAuth } from "./auth/AuthProvider";
 import Header from "./Header";
@@ -21,27 +21,6 @@ interface Note {
 
 const Home = () => {
   const { user } = useAuth();
-
-  // Show a message if not logged in
-  if (!user) {
-    return (
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
-        <Header />
-        <main className="pt-16 pb-6 px-2 sm:px-4">
-          <div className="max-w-7xl mx-auto flex items-center justify-center h-[calc(100vh-8rem)]">
-            <div className="text-center">
-              <h2 className="text-2xl font-semibold mb-2">
-                Welcome to Notes App
-              </h2>
-              <p className="text-gray-600 dark:text-gray-400 mb-4">
-                Please sign in with GitHub to create and manage your notes
-              </p>
-            </div>
-          </div>
-        </main>
-      </div>
-    );
-  }
   const [isListView, setIsListView] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedTag, setSelectedTag] = useState("");
@@ -51,6 +30,7 @@ const Home = () => {
   const [isEditorOpen, setIsEditorOpen] = useState(false);
   const [notes, setNotes] = useState<Note[]>([]);
   const [loading, setLoading] = useState(true);
+  const [editingNote, setEditingNote] = useState<Note | null>(null);
 
   const fetchTags = async () => {
     try {
@@ -64,6 +44,8 @@ const Home = () => {
   };
 
   useEffect(() => {
+    if (!user) return;
+
     fetchTags();
     const fetchNotes = async () => {
       try {
@@ -117,7 +99,27 @@ const Home = () => {
     return () => {
       channel.unsubscribe();
     };
-  }, []);
+  }, [user]);
+
+  if (!user) {
+    return (
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+        <Header />
+        <main className="pt-16 pb-6 px-2 sm:px-4">
+          <div className="max-w-7xl mx-auto flex items-center justify-center h-[calc(100vh-8rem)]">
+            <div className="text-center">
+              <h2 className="text-2xl font-semibold mb-2">
+                Welcome to Notes App
+              </h2>
+              <p className="text-gray-600 dark:text-gray-400 mb-4">
+                Please sign in with GitHub to create and manage your notes
+              </p>
+            </div>
+          </div>
+        </main>
+      </div>
+    );
+  }
 
   const handleViewToggle = (view: "grid" | "list") => {
     setIsListView(view === "list");
@@ -126,8 +128,6 @@ const Home = () => {
   const handleSearch = (query: string) => {
     setSearchQuery(query);
   };
-
-  const [editingNote, setEditingNote] = useState<Note | null>(null);
 
   const handleNoteEdit = (id: string) => {
     const note = notes.find((n) => n.id === id);
@@ -152,7 +152,6 @@ const Home = () => {
     content: string;
     tags: Array<{ id: string; name: string; color?: string }>;
   }) => {
-    console.log("Saving note:", noteData);
     try {
       if (!user) {
         throw new Error("Please sign in to create or edit notes");
