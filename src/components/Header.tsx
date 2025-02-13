@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { Input } from "./ui/input";
 import { Button } from "./ui/button";
 import { Search, Grid, List, Sun, Moon } from "lucide-react";
-import { LoginButton } from "./auth/LoginButton";
+import LoginButton from "./auth/LoginButton";
 import { useTheme } from "../lib/utils";
 
 interface HeaderProps {

@@ -1,5 +1,5 @@
 import { Button } from "../ui/button";
-import { LoginButton } from "../auth/LoginButton";
+import LoginButton from "../auth/LoginButton";
 import { useAuth } from "../auth/AuthProvider";
 import { useNavigate } from "react-router-dom";
 
