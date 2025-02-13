@@ -1,14 +1,20 @@
 import { Button } from "../ui/button";
-import { LoginButton } from "../auth/LoginButton";
+import LoginButton from "../auth/LoginButton";
 import { useAuth } from "../auth/AuthProvider";
 import { useNavigate } from "react-router-dom";
+import { useEffect } from "react";
 
 export default function LandingPage() {
   const { user } = useAuth();
   const navigate = useNavigate();
 
+  useEffect(() => {
+    if (user) {
+      navigate("/app", { replace: true });
+    }
+  }, [user, navigate]);
+
   if (user) {
-    navigate("/app", { replace: true });
     return null;
   }
 
