@@ -1,11 +1,13 @@
 import { useState, useEffect } from "react";
-import { supabase } from "../lib/supabase";
 import { useAuth } from "./auth/AuthProvider";
 import Header from "./Header";
 import NotesGrid from "./NotesGrid";
 import NoteEditor from "./NoteEditor";
 import { Button } from "./ui/button";
 import { Plus } from "lucide-react";
+import { usePayment } from "../features/payment/presentation/PaymentProvider";
+import UpgradeDialog from "../features/payment/presentation/UpgradeDialog";
+import { api } from "../lib/api";
 
 interface Note {
   id: string;
@@ -21,85 +23,120 @@ interface Note {
 
 const Home = () => {
   const { user } = useAuth();
+  const { limits, loading: paymentLoading } = usePayment();
   const [isListView, setIsListView] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedTag, setSelectedTag] = useState("");
-  const [availableTags, setAvailableTags] = useState<
-    Array<{ id: string; name: string; color?: string }>
-  >([]);
+  const [availableTags, setAvailableTags] = useState([]);
   const [isEditorOpen, setIsEditorOpen] = useState(false);
+  const [showUpgradeDialog, setShowUpgradeDialog] = useState(false);
   const [notes, setNotes] = useState<Note[]>([]);
   const [loading, setLoading] = useState(true);
   const [editingNote, setEditingNote] = useState<Note | null>(null);
 
-  const fetchTags = async () => {
-    try {
-      const { data: tags, error } = await supabase.from("tags").select("*");
+  useEffect(() => {
+    if (user) {
+      loadNotes();
+      loadTags();
+    }
+  }, [user]);
 
-      if (error) throw error;
-      setAvailableTags(tags);
+  const loadNotes = async () => {
+    try {
+      const notes = await api.notes.list();
+      setNotes(
+        notes.map((note) => ({
+          ...note,
+          lastModified: new Date(note.updated_at),
+        })),
+      );
     } catch (error) {
-      console.error("Error fetching tags:", error);
+      console.error("Error loading notes:", error);
+    } finally {
+      setLoading(false);
     }
   };
 
-  useEffect(() => {
-    if (!user) return;
+  const loadTags = async () => {
+    try {
+      const tags = await api.tags.list();
+      setAvailableTags(tags);
+    } catch (error) {
+      console.error("Error loading tags:", error);
+    }
+  };
 
-    fetchTags();
-    const fetchNotes = async () => {
-      try {
-        const { data: notesData, error } = await supabase.from("notes").select(`
-            *,
-            notes_tags(tag_id),
-            tags(id, name, color)
-          `);
+  const handleViewToggle = () => {
+    setIsListView(!isListView);
+  };
 
-        if (error) throw error;
+  const handleSearch = (query: string) => {
+    setSearchQuery(query);
+  };
 
-        if (notesData) {
-          const formattedNotes = notesData.map((note: any) => ({
-            id: note.id,
-            title: note.title,
-            content: note.content,
-            tags: note.tags || [],
-            lastModified: new Date(note.updated_at || note.created_at),
-          }));
-          setNotes(formattedNotes);
-        }
-      } catch (error) {
-        console.error("Error fetching notes:", error);
-      } finally {
-        setLoading(false);
+  const handleNoteEdit = (noteId: string) => {
+    const note = notes.find((n) => n.id === noteId);
+    if (note) {
+      setEditingNote(note);
+      setIsEditorOpen(true);
+    }
+  };
+
+  const handleNoteDelete = async (noteId: string) => {
+    try {
+      await api.notes.delete(noteId);
+      setNotes(notes.filter((note) => note.id !== noteId));
+    } catch (error) {
+      console.error("Error deleting note:", error);
+    }
+  };
+
+  const handleNoteSave = async (note: {
+    title: string;
+    content: string;
+    tags: { id: string; name: string }[];
+  }) => {
+    try {
+      if (editingNote) {
+        await api.notes.update(editingNote.id, {
+          title: note.title,
+          content: note.content,
+          tags: note.tags.map((t) => t.id),
+        });
+      } else {
+        await api.notes.create({
+          title: note.title,
+          content: note.content,
+          tags: note.tags.map((t) => t.id),
+        });
       }
-    };
+      loadNotes();
+      setIsEditorOpen(false);
+      setEditingNote(null);
+    } catch (error) {
+      console.error("Error saving note:", error);
+    }
+  };
 
-    fetchNotes();
+  const handleCreateNote = () => {
+    if (!limits?.canCreateNote) {
+      setShowUpgradeDialog(true);
+      return;
+    }
+    setEditingNote(null);
+    setIsEditorOpen(true);
+  };
 
-    // Subscribe to realtime changes for all relevant tables
-    const channel = supabase
-      .channel("db-changes")
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "notes" },
-        () => fetchNotes(),
-      )
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "notes_tags" },
-        () => fetchNotes(),
-      )
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "tags" },
-        () => fetchNotes(),
-      )
-      .subscribe();
-
-    return () => {
-      channel.unsubscribe();
-    };
-  }, [user]);
+  const filteredNotes = notes
+    .filter((note) => {
+      const matchesSearch =
+        note.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        note.content.toLowerCase().includes(searchQuery.toLowerCase());
+      const matchesTag =
+        !selectedTag || note.tags.some((t) => t.id === selectedTag);
+      return matchesSearch && matchesTag;
+    })
+    .sort((a, b) => b.lastModified.getTime() - a.lastModified.getTime());
 
   if (!user) {
     return (
@@ -121,119 +158,6 @@ const Home = () => {
     );
   }
 
-  const handleViewToggle = (view: "grid" | "list") => {
-    setIsListView(view === "list");
-  };
-
-  const handleSearch = (query: string) => {
-    setSearchQuery(query);
-  };
-
-  const handleNoteEdit = (id: string) => {
-    const note = notes.find((n) => n.id === id);
-    if (note) {
-      setEditingNote(note);
-      setIsEditorOpen(true);
-    }
-  };
-
-  const handleNoteDelete = async (id: string) => {
-    try {
-      const { error } = await supabase.from("notes").delete().eq("id", id);
-
-      if (error) throw error;
-    } catch (error) {
-      console.error("Error deleting note:", error);
-    }
-  };
-
-  const handleNoteSave = async (noteData: {
-    title: string;
-    content: string;
-    tags: Array<{ id: string; name: string; color?: string }>;
-  }) => {
-    try {
-      if (!user) {
-        throw new Error("Please sign in to create or edit notes");
-      }
-
-      if (editingNote) {
-        // Update existing note
-        const { error: noteError } = await supabase
-          .from("notes")
-          .update({
-            title: noteData.title,
-            content: noteData.content,
-            updated_at: new Date().toISOString(),
-          })
-          .eq("id", editingNote.id);
-
-        if (noteError) throw noteError;
-
-        // Update tags
-        await supabase
-          .from("notes_tags")
-          .delete()
-          .eq("note_id", editingNote.id);
-
-        if (noteData.tags.length > 0) {
-          const { error: tagError } = await supabase.from("notes_tags").insert(
-            noteData.tags.map((tag) => ({
-              note_id: editingNote.id,
-              tag_id: tag.id,
-            })),
-          );
-
-          if (tagError) throw tagError;
-        }
-      } else {
-        // Create new note
-        const { data: newNote, error: noteError } = await supabase
-          .from("notes")
-          .insert({
-            title: noteData.title,
-            content: noteData.content,
-            user_id: user.id,
-          })
-          .select()
-          .single();
-
-        if (noteError) throw noteError;
-
-        if (noteData.tags.length > 0) {
-          const { error: tagError } = await supabase.from("notes_tags").insert(
-            noteData.tags.map((tag) => ({
-              note_id: newNote.id,
-              tag_id: tag.id,
-            })),
-          );
-
-          if (tagError) throw tagError;
-        }
-      }
-
-      setIsEditorOpen(false);
-      setEditingNote(null);
-    } catch (error) {
-      console.error("Error saving note:", error);
-      alert("Error saving note: " + (error as Error).message);
-    }
-  };
-
-  const filteredNotes = notes.filter((note) => {
-    const matchesSearch =
-      note.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      note.content.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      note.tags.some((tag) =>
-        tag.name.toLowerCase().includes(searchQuery.toLowerCase()),
-      );
-
-    const matchesTag =
-      !selectedTag || note.tags.some((tag) => tag.id === selectedTag);
-
-    return matchesSearch && matchesTag;
-  });
-
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
       <Header
@@ -250,7 +174,7 @@ const Home = () => {
           <NotesGrid
             notes={filteredNotes}
             isListView={isListView}
-            loading={loading}
+            loading={loading || paymentLoading}
             onViewToggle={() => setIsListView(!isListView)}
             onNoteEdit={handleNoteEdit}
             onNoteDelete={handleNoteDelete}
@@ -258,7 +182,7 @@ const Home = () => {
 
           <Button
             className="fixed bottom-4 right-4 sm:bottom-6 sm:right-6 h-12 w-12 sm:h-14 sm:w-14 rounded-full shadow-lg"
-            onClick={() => setIsEditorOpen(true)}
+            onClick={handleCreateNote}
           >
             <Plus className="h-6 w-6" />
           </Button>
@@ -279,6 +203,12 @@ const Home = () => {
                   }
                 : undefined
             }
+          />
+
+          <UpgradeDialog
+            open={showUpgradeDialog}
+            onClose={() => setShowUpgradeDialog(false)}
+            remainingNotes={limits?.notesRemaining}
           />
         </div>
       </main>

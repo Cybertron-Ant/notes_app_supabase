@@ -1,5 +1,4 @@
 import React from "react";
-import MarkdownPreview from "@uiw/react-markdown-preview";
 import {
   Card,
   CardContent,
@@ -81,7 +80,7 @@ const NoteCard = ({
       </CardHeader>
       <CardContent>
         <div className="text-sm line-clamp-4 prose dark:prose-invert prose-sm">
-          <MarkdownPreview source={content} />
+          {content}
         </div>
       </CardContent>
       <CardFooter className="flex flex-col items-start gap-2">

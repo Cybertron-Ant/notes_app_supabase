@@ -1,7 +1,7 @@
-import React, { useState } from "react";
+import React from "react";
 import NoteCard from "./NoteCard";
 import { Button } from "./ui/button";
-import { Grid, List } from "lucide-react";
+import { Grid, List, Loader2 } from "lucide-react";
 
 interface Note {
   id: string;
@@ -24,8 +24,6 @@ interface NotesGridProps {
   onNoteDelete?: (id: string) => void;
 }
 
-import { Loader2 } from "lucide-react";
-
 const NotesGrid = ({
   notes = [],
   loading = false,
@@ -34,6 +32,24 @@ const NotesGrid = ({
   onNoteEdit = () => {},
   onNoteDelete = () => {},
 }: NotesGridProps) => {
+  if (loading) {
+    return (
+      <div className="flex flex-col items-center justify-center h-[400px] text-gray-500 dark:text-gray-400">
+        <Loader2 className="h-8 w-8 animate-spin" />
+        <p className="text-sm mt-2">Loading notes...</p>
+      </div>
+    );
+  }
+
+  if (notes.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center h-[400px] text-gray-500 dark:text-gray-400">
+        <p className="text-xl">No notes found</p>
+        <p className="text-sm mt-2">Create a new note to get started</p>
+      </div>
+    );
+  }
+
   return (
     <div className="w-full h-full bg-gray-50 dark:bg-gray-900 p-3 sm:p-6">
       <div className="max-w-7xl mx-auto">
@@ -57,7 +73,7 @@ const NotesGrid = ({
             isListView
               ? "grid-cols-1"
               : "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4"
-          } gap-4 sm:gap-6`}
+          }`}
         >
           {notes.map((note) => (
             <div
@@ -76,18 +92,6 @@ const NotesGrid = ({
             </div>
           ))}
         </div>
-
-        {loading ? (
-          <div className="flex flex-col items-center justify-center h-[400px] text-gray-500 dark:text-gray-400">
-            <Loader2 className="h-8 w-8 animate-spin" />
-            <p className="text-sm mt-2">Loading notes...</p>
-          </div>
-        ) : notes.length === 0 ? (
-          <div className="flex flex-col items-center justify-center h-[400px] text-gray-500 dark:text-gray-400">
-            <p className="text-xl">No notes found</p>
-            <p className="text-sm mt-2">Create a new note to get started</p>
-          </div>
-        ) : null}
       </div>
     </div>
   );

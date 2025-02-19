@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Dialog,
   DialogContent,
@@ -6,11 +6,7 @@ import {
   DialogTitle,
   DialogFooter,
 } from "./ui/dialog";
-import MarkdownEditor from "@uiw/react-markdown-editor";
-import MarkdownPreview from "@uiw/react-markdown-preview";
 import { Button } from "./ui/button";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs";
-import { Textarea } from "./ui/textarea";
 import { Input } from "./ui/input";
 import { Badge } from "./ui/badge";
 import { ScrollArea } from "./ui/scroll-area";
@@ -50,7 +46,7 @@ const NoteEditor = ({
   initialNote = {
     title: "",
     content: "",
-    tags: [{ id: "1", name: "personal", color: "bg-blue-100 text-blue-800" }],
+    tags: [],
   },
 }: NoteEditorProps) => {
   const [isPreview, setIsPreview] = useState(false);
@@ -59,9 +55,16 @@ const NoteEditor = ({
   const [tags, setTags] = useState<Tag[]>(initialNote.tags);
   const [newTag, setNewTag] = useState("");
 
+  useEffect(() => {
+    if (open) {
+      setTitle(initialNote.title);
+      setContent(initialNote.content);
+      setTags(initialNote.tags);
+    }
+  }, [open, initialNote]);
+
   const handleSave = () => {
     onSave({ title, content, tags });
-    onClose();
   };
 
   const addTag = () => {
@@ -106,6 +109,7 @@ const NoteEditor = ({
                 variant="ghost"
                 size="sm"
                 className="h-8 w-8 p-0"
+                title={button.text}
               >
                 {button.icon}
               </Button>
@@ -128,38 +132,24 @@ const NoteEditor = ({
             </Button>
           </div>
 
-          <div className="flex-1 relative">
+          <div className="flex-1 relative min-h-0">
             <div
               className={`w-full h-full transition-opacity ${isPreview ? "hidden" : "block"}`}
             >
-              <MarkdownEditor
+              <textarea
                 value={content}
-                onChange={(value) => setContent(value)}
-                toolbars={[
-                  "bold",
-                  "italic",
-                  "strikethrough",
-                  "heading-1",
-                  "heading-2",
-                  "heading-3",
-                  "unordered-list",
-                  "ordered-list",
-                  "quote",
-                  "code",
-                  "link",
-                  "image",
-                ]}
-                className="min-h-[300px] flex-1 border rounded-md"
+                onChange={(e) => setContent(e.target.value)}
+                className="w-full h-full p-4 border rounded-md resize-none focus:outline-none focus:ring-2 focus:ring-primary"
+                placeholder="Write your note here..."
               />
             </div>
             <div
               className={`w-full h-full transition-opacity ${isPreview ? "block" : "hidden"}`}
             >
-              <ScrollArea className="h-[300px] w-full rounded-md border p-4">
-                <MarkdownPreview
-                  source={content}
-                  className="prose dark:prose-invert"
-                />
+              <ScrollArea className="h-full w-full rounded-md border p-4">
+                <div className="prose dark:prose-invert max-w-none">
+                  {content}
+                </div>
               </ScrollArea>
             </div>
           </div>
